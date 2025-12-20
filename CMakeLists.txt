@@ -28,7 +28,7 @@ set(DUCKDB_MODULE_BASE_DIR "${CMAKE_CURRENT_LIST_DIR}")
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-set(CMAKE_CXX_STANDARD "11" CACHE STRING "C++ standard to enforce")
+set(CMAKE_CXX_STANDARD "17" CACHE STRING "C++ standard to enforce")  # !!! quacklab modification: originally was 11
 
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -687,6 +687,7 @@ include_directories(third_party/jaro_winkler)
 include_directories(third_party/vergesort)
 include_directories(third_party/yyjson/include)
 include_directories(third_party/zstd/include)
+include_directories(third_party/antlr4/runtime/src)  # !!! quacklab addition
 
 # todo only regenerate ub file if one of the input files changed hack alert
 function(enable_unity_build UB_SUFFIX SOURCE_VARIABLE_NAME)

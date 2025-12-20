@@ -9,6 +9,8 @@
 #include "duckdb/planner/operator/logical_comparison_join.hpp"
 #include "duckdb/storage/data_table.hpp"
 
+#include "duckdb/hinting/planner_hints.hpp"  // !!! quacklab addition
+
 #include <math.h>
 
 namespace duckdb {
@@ -394,6 +396,14 @@ DenomInfo CardinalityEstimator::GetDenominator(JoinRelationSet &set) {
 
 template <>
 double CardinalityEstimator::EstimateCardinalityWithSet(JoinRelationSet &new_set) {
+	// !!! quacklab addition
+	auto planner_hints = tud::HintingContext::CurrentPlannerHints();
+	auto card_hint = planner_hints->GetCardinalityHint(new_set);
+	if (card_hint) {
+		return card_hint.value();
+	}
+	// !!! end quacklab addition
+
 	if (relation_set_2_cardinality.find(new_set.ToString()) != relation_set_2_cardinality.end()) {
 		return relation_set_2_cardinality[new_set.ToString()].cardinality_before_filters;
 	}

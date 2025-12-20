@@ -9,6 +9,8 @@
 #include "duckdb/storage/data_table.hpp"
 #include "duckdb/planner/filter/constant_filter.hpp"
 
+#include "duckdb/hinting/planner_hints.hpp"  // !!! quacklab addition
+
 #include <math.h>
 
 namespace duckdb {
@@ -68,6 +70,18 @@ idx_t RelationStatisticsHelper::GetDistinctCount(LogicalGet &get, ClientContext 
 
 RelationStats RelationStatisticsHelper::ExtractGetStats(LogicalGet &get, ClientContext &context) {
 	auto return_stats = RelationStats();
+
+	// !!! quacklab addition
+	auto planner_hints = tud::HintingContext::CurrentPlannerHints();
+	auto card_hint = planner_hints->GetCardinalityHint(get);
+	if (card_hint) {
+		return_stats.cardinality = LossyNumericCast<idx_t>(card_hint.value());
+		return_stats.stats_initialized = true;
+		get.estimated_cardinality = return_stats.cardinality;
+		get.has_estimated_cardinality = true;
+		return return_stats;
+	}
+	// !!! end quacklab addition
 
 	auto base_table_cardinality = get.EstimateCardinality(context);
 	auto cardinality_after_filters = base_table_cardinality;

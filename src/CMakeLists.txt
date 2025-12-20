@@ -86,6 +86,7 @@ else()
 
   add_definitions(-DDUCKDB_MAIN_LIBRARY)
 
+  add_subdirectory(hinting)
   add_subdirectory(optimizer)
   add_subdirectory(planner)
   add_subdirectory(parser)
@@ -113,7 +114,8 @@ else()
       duckdb_skiplistlib
       duckdb_mbedtls
       duckdb_yyjson
-      duckdb_zstd)
+      duckdb_zstd
+      antlr4_static)  # !!! quacklab addition
 
   add_library(duckdb SHARED ${ALL_OBJECT_FILES})
   if(SET_DUCKDB_LIBRARY_VERSION)

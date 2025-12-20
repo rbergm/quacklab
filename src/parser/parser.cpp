@@ -15,6 +15,8 @@
 #include "parser/parser.hpp"
 #include "postgres_parser.hpp"
 
+#include "duckdb/hinting/planner_hints.hpp"  // !!! quacklab addition
+
 namespace duckdb {
 
 Parser::Parser(ParserOptions options_p) : options(options_p) {
@@ -203,6 +205,11 @@ void Parser::ParseQuery(const string &query) {
 			return;
 		}
 	}
+
+	// !!! quacklab addition
+	tud::HintingContext::InitHints(query);
+	// !!! end quacklab addition
+
 	{
 		PostgresParser::SetPreserveIdentifierCase(options.preserve_identifier_case);
 		bool parsing_succeed = false;

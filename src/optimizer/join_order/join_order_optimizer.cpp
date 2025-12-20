@@ -8,6 +8,8 @@
 #include "duckdb/planner/expression/list.hpp"
 #include "duckdb/planner/operator/list.hpp"
 
+#include "duckdb/hinting/planner_hints.hpp"  // !!! quacklab addition
+
 namespace duckdb {
 
 JoinOrderOptimizer::JoinOrderOptimizer(ClientContext &context)
@@ -51,9 +53,21 @@ unique_ptr<LogicalOperator> JoinOrderOptimizer::Optimize(unique_ptr<LogicalOpera
 		auto plan_enumerator =
 		    PlanEnumerator(query_graph_manager, cost_model, query_graph_manager.GetQueryGraphEdges());
 
-		// Initialize the leaf/single node plans
-		plan_enumerator.InitLeafPlans();
-		plan_enumerator.SolveJoinOrder();
+		// !!! quacklab modification: originally only the else branch
+		auto planner_hints = tud::HintingContext::CurrentPlannerHints();
+		auto joinorder_hint = planner_hints->GetJoinOrderHint();
+		if (joinorder_hint) {
+			auto plans = reference_map_t<JoinRelationSet, unique_ptr<DPJoinNode>>(1);
+			auto join_hinting = tud::JoinOrderHinting(plan_enumerator);
+			join_hinting.MakeJoinNode(*joinorder_hint.value());
+		} else {
+			// Initialize the leaf/single node plans
+			plan_enumerator.InitLeafPlans();
+			plan_enumerator.SolveJoinOrder();
+		}
+		// !!! end quacklab addition
+
+		
 		// now reconstruct a logical plan from the query graph plan
 		query_graph_manager.plans = &plan_enumerator.GetPlans();
 

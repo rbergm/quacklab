@@ -1,51 +1,61 @@
-<div align="center">
-  <picture>
-    <source media="(prefers-color-scheme: light)" srcset="logo/DuckDB_Logo-horizontal.svg">
-    <source media="(prefers-color-scheme: dark)" srcset="logo/DuckDB_Logo-horizontal-dark-mode.svg">
-    <img alt="DuckDB logo" src="logo/DuckDB_Logo-horizontal.svg" height="100">
-  </picture>
-</div>
-<br>
+# quacklab
 
-<p align="center">
-  <a href="https://github.com/duckdb/duckdb/actions"><img src="https://github.com/duckdb/duckdb/actions/workflows/Main.yml/badge.svg?branch=main" alt="Github Actions Badge"></a>
-  <a href="https://discord.gg/tcvwpjfnZx"><img src="https://shields.io/discord/909674491309850675" alt="discord" /></a>
-  <a href="https://github.com/duckdb/duckdb/releases/"><img src="https://img.shields.io/github/v/release/duckdb/duckdb?color=brightgreen&display_name=tag&logo=duckdb&logoColor=white" alt="Latest Release"></a>
-</p>
-
-## DuckDB
-
-DuckDB is a high-performance analytical database system. It is designed to be fast, reliable, portable, and easy to use. DuckDB provides a rich SQL dialect with support far beyond basic SQL. DuckDB supports arbitrary and nested correlated subqueries, window functions, collations, complex types (arrays, structs, maps), and [several extensions designed to make SQL easier to use](https://duckdb.org/docs/stable/sql/dialect/friendly_sql.html).
-
-DuckDB is available as a [standalone CLI application](https://duckdb.org/docs/stable/clients/cli/overview) and has clients for [Python](https://duckdb.org/docs/stable/clients/python/overview), [R](https://duckdb.org/docs/stable/clients/r), [Java](https://duckdb.org/docs/stable/clients/java), [Wasm](https://duckdb.org/docs/stable/clients/wasm/overview), etc., with deep integrations with packages such as [pandas](https://duckdb.org/docs/guides/python/sql_on_pandas) and [dplyr](https://duckdb.org/docs/stable/clients/r#duckplyr-dplyr-api).
-
-For more information on using DuckDB, please refer to the [DuckDB documentation](https://duckdb.org/docs/stable/).
+quacklab is a research-focused fork of [DuckDB](https://duckdb.org) that provides _query hints_ to modify the optimizer
+behavior.
+Query hints can be used to change the join order of a query plan, to overwrite cardinality estimates for base tables and joins,
+or to change the physical operators used to calculate intermediates[^1].
 
 ## Installation
 
-If you want to install DuckDB, please see [our installation page](https://duckdb.org/docs/installation/) for instructions.
+quacklab can be installed like vanilla DuckDB with one caveat: we use [ANTLR](https://antlr.org) to generate the parser for
+the hint syntax. In turn, ANTLR requires a Java runtime to execute. To summarize, you need the following to build quacklab:
 
-## Data Import
+- a C++ compiler with support for C++ 17
+- CMake
+- although not strictly required, it is recommended to use Ninja as the build system. This automatically parallelizes the
+  compilation process (see [DuckDB docs](https://github.com/duckdb/duckdb/blob/main/CONTRIBUTING.md#building))
+- a Java runtime for Java 11 or later
 
-For CSV files and Parquet files, data import is as simple as referencing the file in the FROM clause:
+Start the build by generating the hint parser:
 
-```sql
-SELECT * FROM 'myfile.csv';
-SELECT * FROM 'myfile.parquet';
+```bash
+cd third_party/antlr4
+java -jar antlr-runtime-4.13.2.jar ../../src/hinting/grammar/HintBlock.g4
 ```
 
-Refer to our [Data Import](https://duckdb.org/docs/stable/data/overview) section for more information.
+Afterwards, you can build quacklab like normal DuckDB:
 
-## SQL Reference
+```bash
+GEN=ninja make
+```
 
-The documentation contains a [SQL introduction and reference](https://duckdb.org/docs/stable/sql/introduction).
+The DuckDB binary will be located in `build/release/duckdb` by default.
 
-## Development
+## Usage
 
-For development, DuckDB requires [CMake](https://cmake.org), Python 3 and a `C++11` compliant compiler. In the root directory, run `make` to compile the sources. For development, use `make debug` to build a non-optimized debug version. You should run `make unit` and `make allunit` to verify that your version works properly after making changes. To test performance, you can run `BUILD_BENCHMARK=1 BUILD_TPCH=1 make` and then perform several standard benchmarks from the root directory by executing `./build/release/benchmark/benchmark_runner`. The details of benchmarks are in our [Benchmark Guide](benchmark/README.md).
+quacklab can be used as a drop-in replacement for DuckDB. The optimizer hints are embedded in a comment that is shipped with
+the actual query like so:
 
-Please also refer to our [Build Guide](https://duckdb.org/docs/stable/dev/building/overview) and [Contribution Guide](CONTRIBUTING.md).
+```sql
+explain /*=quack_lab= card(t #42) card(mi #24) */ select count(*) from title t join movie_info mi on t.id = mi.movie_id;
+```
 
-## Support
+The following hints are supported:
 
-See the [Support Options](https://duckdblabs.com/support/) page.
+**`JoinOrder`** controls the join order of the query. The syntax is: `JoinOrder(((t1 t2) t3))`. Tables can be referenced by
+their name or alias. You can also force bushy plans like so: `((t1 t2) (t3 t4))`. Notice that the first pair of paranthesis
+is always required, i.e. for two tables you must use `JoinOrder((t1 t2))` and not ~~`JoinOrder(t1 t2)`~~.
+
+**`Card`** sets the cardinality estimate for a particular intermediate. The syntax is: `Card(t #10000)` where the first part
+describes the intermediate and the second part after the `#` sets the cardinality. Tables can be referenced by their name or
+alias. You can set the cardinality of base tables (`Card(t1 #42)`) as well as joins (`Card(t1 t2 t3 #42000)`). All
+cardinalities refer to the _output cardinality_, i.e. after all applicable predicates.
+
+**`NestLoop`**, **`HashJoin`**, **`MergeJoin`** control the physical operator that is used to compute a particular join[^1].
+The syntax is `NestLoop(t1 t2 t3)`. Tables can be referenced by their name or alias.
+
+
+[^1]: support for this is currently very limited due to restrictions of the DuckDB execution engine. For example, join
+      operators are not implemented as general-purpose operators. Instead, they are tied to specific types of join predicates.
+      Quacklab implements the logic to produce query plans with the desired operators, however these plans usually cannot be
+      executed (as of DuckDB v1.4-andium).
