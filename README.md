@@ -5,6 +5,12 @@ behavior.
 Query hints can be used to change the join order of a query plan, to overwrite cardinality estimates for base tables and joins,
 or to change the physical operators used to calculate intermediates[^1].
 
+## Repo Layout
+
+The `quacklab-patches` branch is used to track our changes to upstream DuckDB. It should not be used directly.
+For the DuckDB versions that we support, dedicated `quacklab-[DuckDB release]` branches exist, such as `quacklab-v1.4-andium`.
+These branches are used to apply our quacklab patches to the specific DuckDB release. Use these branches to build quacklab.
+
 ## Installation
 
 quacklab can be installed like vanilla DuckDB with one caveat: we use [ANTLR](https://antlr.org) to generate the parser for
