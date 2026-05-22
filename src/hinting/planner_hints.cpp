@@ -197,7 +197,7 @@ bool PlannerHints::GetOperatorEnabled(OperatorHint op) const {
 // === HintingContext Implementation ===
 //
 
-std::unique_ptr<PlannerHints> HintingContext::planner_hints_ = nullptr;
+thread_local std::unique_ptr<PlannerHints> HintingContext::planner_hints_ = nullptr;
 
 PlannerHints* HintingContext::InitHints(const std::string &query) {
     planner_hints_ = std::make_unique<PlannerHints>(query);

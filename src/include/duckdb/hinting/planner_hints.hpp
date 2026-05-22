@@ -140,7 +140,7 @@ public:
 
 private:
 
-    static std::unique_ptr<PlannerHints> planner_hints_;
+    thread_local static std::unique_ptr<PlannerHints> planner_hints_;
 
 };
 
